@@ -72,7 +72,7 @@ private:
         }
         std::string newused(N, '0');
         //std::string ans = used + unused;
-        std::string ans = newused + unused; //Мне было лень полностью убирать часть с +2, поэтому я просто её вырезал))
+        std::string ans = newused + unused;
         if (b) {
             ans = '1' + ans;
         } else {
