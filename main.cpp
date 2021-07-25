@@ -71,8 +71,8 @@ private:
             }
         }
         std::string newused(N, '0');
-        //std::string ans = used + unused;
-        std::string ans = newused + unused;
+        std::string ans = used + unused;
+        //std::string ans = newused + unused; //Если хотим смотреть для оригинальной игры
         if (b) {
             ans = '1' + ans;
         } else {
