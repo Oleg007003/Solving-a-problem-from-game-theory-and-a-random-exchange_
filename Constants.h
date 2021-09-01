@@ -10,14 +10,14 @@
     #include <random>
     #include <ctime>
 
-    const int64_t const_cntPlayers = 240;
-    const int64_t const_cntGoodPlayer = 210;
-    const int64_t const_rounds = 20;
-    const double const_start_price = 300.0;
-    const int64_t const_start_shares = 5;
-    const size_t const_length_of_round = 3000;
-    const double const_start_money = 500.0;
-    const size_t const_cnt_mutation = 20;
+    const int64_t const_cntPlayers = 220;
+    const int64_t const_cntGoodPlayer = 190;
+    const int64_t const_rounds = 40;
+    const double const_start_price = 200.0;
+    const int64_t const_start_shares = 10 ;
+    const size_t const_length_of_round = 3500;
+    const double const_start_money = 800.0;
+    const size_t const_cnt_mutation = 18;
     std::uniform_real_distribution<double> uniform_dist(0.0, 1000.0);
     std::default_random_engine e(std::time(nullptr));
 
