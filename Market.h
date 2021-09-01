@@ -7,6 +7,7 @@
 
 #include "Player.h"
 #include "Model.h"
+#include <fstream>
 #include <map>
 #include <random>
 #include <vector>
@@ -24,88 +25,12 @@ private:
     std::vector<double> maxRate;
     std::vector<double> minRate;
     std::vector<double> endRate;
-public:
-    int64_t cntStocks;
-    std::map<int64_t, Player> traders; //Это делается в игре, а не на рынке
-    Market(int64_t start_rate, std::vector<Player> &v) {
-        longTrend.installSize(3);
-        shortTrend.installSize(1);
-        rate = start_rate;
-        cntSellsOffers = 0;
-        cntBuysOffers = 0;
-        cntStocks = 10;
-        day = 0;
-        for (int64_t i = 0; i < v.size(); i++) {
-            traders[i] = v[i];
-        }
-    }
 
-    void Loop() {
-        newDay();
-        shortTrend.Clear();
-        PayDividents();
-        CreateNewPlayer();
-        ReleaseNewStocks();
-        mxRt = rate;
-        mnRt = rate;
-        meanRt = 0;
-        for (auto &[id, player] : traders) {
-            double solution = player.simpleStrategy(rate);
-            if (solution > 0) {
-                WantBuySimple(id, solution); //Хочет купить
-            } else if (solution < 0) {
-                WantSellSimple(id, -1 * solution);
-            }
-            if (rate > mxRt) {
-                mxRt = rate;
-            } else if (rate < mnRt) {
-                mnRt = rate;
-            }
-            meanRt += rate;
-            if (shortTrend.isMemoryFull()) {
-           //     shortTrend.constructBag(rate);
-            }
-            std::vector<double> tmp = {rate};
-           // shortTrend.setMemory(tmp);
-        }
-        maxRate.push_back(mxRt);
-        minRate.push_back(mnRt);
-        endRate.push_back(meanRt / traders.size());
-        std::vector<double> zanos = {mxRt, mnRt, meanRt / traders.size()};
-        if (day > 0) {
-            longTrend.constructBag(rate);
-        }
-        longTrend.setMemory(zanos);
-        day++;
-    }
-
-    void ReleaseNewStocks() {
-        if (day % 150 == 0) {
-            cntStocks += 10 + (std::rand() % 50);
-        }
-    }
-    void CreateNewPlayer() {
-        if (rand() % 15 == 13) {
-            int64_t position = traders.size();//
-            traders.insert({position, Player(position)});
-        }
-    }
-    void PayDividents() {
-        if (day % 50 == 0) {
-            for (auto &[id, player] : traders) {
-                player.money += (rate / 20) * player.cnt_shares;
-            }
-        }
-    }
-
-    void updateRate(double delt) {
-        rate += delt;
-    }
-    void newDay() {
-        rate += uniform_dist(e) / 10 * 2 - 120;
-        if (rate < 100) {
-            rate = 100;
-        }
+    std::vector<double> constructParams() {
+        //когда новые акции, дивиденды, 3 про тренд
+        auto params = longTrend.getParams();
+        std::vector<double> ans = {double(day % 150), double(day % 50), params[0], params[1], params[2]};
+        return ans;
     }
     void WantBuySimple(int64_t id, int64_t shares) { //Хочет купить акции
         double mn = std::min(shares, std::min(cntStocks, int64_t(std::floor(traders[id].money / rate))));
@@ -119,31 +44,6 @@ public:
         traders[id].cnt_shares -= shares;
         updateRate(-double(shares) / 30);
         cntStocks += shares;
-    }
-
-    std::vector<std::pair<int64_t,Player>> Score() {
-        std::vector<std::pair<int64_t, Player>> ans;
-        for (auto [id, player] : traders) {
-            ans.push_back({player.money + player.cnt_shares * rate, player});
-        }
-        return ans;
-    }
-
-    double getRate() {
-        return rate;
-    }
-
-    std::vector<double> getMaxRate() {
-        return maxRate;
-    }
-    std::vector<double> getMinRate() {
-        return minRate;
-    }
-    std::vector<double> getEndRate() {
-        return endRate;
-    }
-    void PrintParams() {
-        longTrend.printParams();
     }
 
     //Более продвинутые функции рынка будут реализиваны позже
@@ -216,6 +116,136 @@ public:
             trader.want_sell += shares;
         }
     }
+public:
+    int64_t cntStocks;
+    std::map<int64_t, Player> traders; //Это делается в игре, а не на рынке
+    Market(int64_t start_rate, std::vector<Player> &v) {
+        longTrend.installSize(3);
+        shortTrend.installSize(1);
+        rate = start_rate;
+        cntSellsOffers = 0;
+        cntBuysOffers = 0;
+        cntStocks = 10;
+        day = 0;
+        for (int64_t i = 0; i < v.size(); i++) {
+            traders[i] = v[i];
+        }
+    }
+
+    void Loop() {
+        newDay();
+        shortTrend.Clear();
+        PayDividents();
+        CreateNewPlayer();
+        ReleaseNewStocks();
+        mxRt = rate;
+        mnRt = rate;
+        meanRt = 0;
+        std::vector<double> params = constructParams();
+        for (auto &[id, player] : traders) {
+            // double solution = player.simpleStrategy(rate);
+            double solution = player.cleverStrategy(params, rate, day > 1);
+            if (solution > 0) {
+                WantBuySimple(id, solution); //Хочет купить
+            } else if (solution < 0) {
+                WantSellSimple(id, -1 * solution);
+            }
+            if (rate > mxRt) {
+                mxRt = rate;
+            } else if (rate < mnRt) {
+                mnRt = rate;
+            }
+            meanRt += rate;
+            if (shortTrend.isMemoryFull()) {
+           //     shortTrend.constructBag(rate);
+            }
+            std::vector<double> tmp = {rate};
+           // shortTrend.setMemory(tmp);
+        }
+        maxRate.push_back(mxRt);
+        minRate.push_back(mnRt);
+        endRate.push_back(meanRt / traders.size());
+        std::vector<double> zanos = {mxRt, mnRt, meanRt / traders.size()};
+        if (day > 0) {
+            longTrend.constructBag(rate);
+        }
+        longTrend.setMemory(zanos); // устанавливаем игры
+        day++;
+    }
+
+    void ReleaseNewStocks() {
+        if (day % 150 == 0) {
+            cntStocks += 10 + (std::rand() % 50);
+        }
+    }
+    void CreateNewPlayer() {
+        if (rand() % 15 == 13) {
+            int64_t position = traders.size();//
+            traders.insert({position, Player(position)});
+        }
+    }
+    void PayDividents() {
+        if (day % 50 == 0) {
+            for (auto &[id, player] : traders) {
+                player.money += (rate / 10) * player.cnt_shares;
+            }
+        }
+    }
+
+    void updateRate(double delt) {
+        rate += delt;
+    }
+    void newDay() {
+        rate += uniform_dist(e) / 10 * 2 - 100;
+        if (rate < 10) {
+            rate = 10;
+        }
+    }
+
+
+    std::vector<std::pair<int64_t,Player>> Score() {
+        std::vector<std::pair<int64_t, Player>> ans;
+        for (auto [id, player] : traders) {
+            ans.push_back({player.money + player.cnt_shares * rate, player});
+        }
+        return ans;
+    }
+
+    double getRate() {
+        return rate;
+    }
+
+    std::vector<double> getMaxRate() {
+        return maxRate;
+    }
+    std::vector<double> getMinRate() {
+        return minRate;
+    }
+    std::vector<double> getEndRate() {
+        return endRate;
+    }
+    void PrintParams() {
+        longTrend.printParams();
+    }
+    void setOnFile(int16_t num_of_iter) {
+        std::ofstream out;
+        out.open("C:\\Users\\oleg0\\CLionProjects\\players.txt", std::ios::app);
+        if (out.is_open()) {
+            out << "epoch is " << num_of_iter << '\n';
+            out << "score\tmoney\tshares\tplayer_id\twish_buy\twish_sell\tparams" << '\n';
+            std::vector<std::pair<int64_t, Player>> scr = Score();
+            for (auto [score, player] : scr) {
+                out << score << ' ' << player.money << ' ' << player.cnt_shares << ' ' << player.id
+                << ' ' << player.wish_buy << ' ' << player.wish_sell;
+                for (auto param : player.model.getParams()) {
+                    out << ' ' << param;
+                }
+                out << '\n';
+            }
+        out.close();
+        }
+    }
+
 };
 
 #endif //UNTITLED7_MARKET_H
