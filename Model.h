@@ -56,6 +56,28 @@ private:
     std::vector<double> params;
     std::deque<std::pair<std::vector<double>, double>> bag;
     std::vector<double> memory;
+    void fit(std::vector<double> &x, const double &real_value) {
+        if (bag.size() > 5) {
+            if (bag.size() > 100) {
+                bag.pop_back();
+            }
+            std::vector<std::vector<double>> v(7);
+            std::vector<double> y(7);
+            v[0] = x; y[0] = real_value;
+            v[1] = bag[0].first; y[1] = bag[0].second;
+            v[2] = bag[1].first; y[2] = bag[1].second;
+            v[3] = bag[2].first; y[3] = bag[2].second;
+            for (size_t i = 4; i < 7; i++) {
+                size_t rd = size_t(std::floor(uniform_dist(e) / 1000) * (bag.size() - 1));
+                v[i] = bag[rd].first;
+                y[i] = bag[rd].second;
+            }
+            for (size_t i = 0; i < 50; i++) {
+                gradient_step(v, y);
+            }
+        }
+        bag.push_front({x, real_value});
+    }
 public:
     Model(size_t sz) {
         v.resize(sz + 1, 0);
@@ -97,29 +119,7 @@ public:
         }
         return ans;
     }
-    void fit(std::vector<double> &x, const double &real_value) {
-        //todo
-        if (bag.size() > 5) {
-            if (bag.size() > 100) {
-                bag.pop_back();
-            }
-            std::vector<std::vector<double>> v(7);
-            std::vector<double> y(7);
-            v[0] = x; y[0] = real_value;
-            v[1] = bag[0].first; y[1] = bag[0].second;
-            v[2] = bag[1].first; y[2] = bag[1].second;
-            v[3] = bag[2].first; y[3] = bag[2].second;
-            for (size_t i = 4; i < 7; i++) {
-                size_t rd = size_t(std::floor(uniform_dist(e) / 1000) * (bag.size() - 1));
-                v[i] = bag[rd].first;
-                y[i] = bag[rd].second;
-            }
-            for (size_t i = 0; i < 50; i++) {
-                gradient_step(v, y);
-            }
-        }
-        bag.push_front({x, real_value});
-    }
+
     void gradient_step(std::vector<std::vector<double>> &x, const std::vector<double> &real_value) {
         std::vector<double> f = grad(x, real_value);
         for (size_t i = 0; i < f.size(); i++) {
@@ -156,6 +156,9 @@ public:
         for (auto i : params) {
             std::cout << i << '\n';
         }
+    }
+    std::vector<double> getParams() {
+        return params;
     }
 };
 #endif //UNTITLED7_MODEL_H
